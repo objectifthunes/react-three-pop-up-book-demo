@@ -1,10 +1,10 @@
 import { Sparkles } from 'lucide-react'
 import { ExportPage } from '@/components/ExportPage'
-import { FullScreenPreview } from '@/components/Preview'
 import { Source } from '@/components/Source'
 import { Notes } from '@/components/Notes'
 import { PropTable } from '@/components/PropTable'
 import { findExport } from '@/components/exports'
+import { LivePopUp } from '@/components/live/examples'
 
 const e = findExport('/components/scene-updater/')!
 
@@ -33,6 +33,7 @@ function Scene() {
 export default async function Page() {
   return (
     <ExportPage group={e.group} title={e.name} lede={e.lede}>
+      <LivePopUp />
       <Source code={CODE} lang="tsx" />
       <PropTable
         rows={[
@@ -73,7 +74,6 @@ export default async function Page() {
           is enough.
         </p>
       </Notes>
-      <FullScreenPreview href="/full/editor/" illustration={<Sparkles size={40} strokeWidth={1.25} />} />
     </ExportPage>
   )
 }

@@ -4,6 +4,7 @@ import { Source } from '@/components/Source'
 import { Notes } from '@/components/Notes'
 import { PropTable } from '@/components/PropTable'
 import { findExport } from '@/components/exports'
+import { LivePopUp } from '@/components/live/examples'
 
 const e = findExport('/start/quick-start/')!
 
@@ -63,6 +64,7 @@ export default function App() {
 export default async function Page() {
   return (
     <ExportPage group={e.group} title={e.name} lede={e.lede}>
+      <LivePopUp />
       <Source code={INSTALL} lang="bash" />
       <PropTable
         label="THE MOVING PARTS"
@@ -79,8 +81,8 @@ export default async function Page() {
       <Source code={CODE} lang="tsx" />
       <Notes>
         <p>
-          This is the same imperative pattern the <Link href="/live/editor/">interactive editor</Link> and the{' '}
-          <Link href="/live/minimal/">minimal demo</Link> use. You keep a <code>bookRef</code> on{' '}
+          This is the same imperative pattern the <Link href="/composition/integration/">composition</Link> and the{' '}
+          <Link href="/start/concepts/">core concepts</Link> use. You keep a <code>bookRef</code> on{' '}
           <code>&lt;Book&gt;</code>, and a child component builds the <code>PopUpBook</code> inside a{' '}
           <code>useFrame</code> once <code>book.isBuilt</code>, then calls <code>popUpBook.update(dt)</code>{' '}
           itself. Because the instance is created and used in the same frame, you never wait on a render to

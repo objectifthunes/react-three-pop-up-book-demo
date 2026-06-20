@@ -20,7 +20,6 @@ export type GroupId =
   | 'components'
   | 'composition'
   | 'reference'
-  | 'live'
 
 export const GROUPS: { id: GroupId; label: string }[] = [
   { id: 'start',       label: 'Getting started' },
@@ -28,7 +27,6 @@ export const GROUPS: { id: GroupId; label: string }[] = [
   { id: 'components',  label: 'Components'       },
   { id: 'composition', label: 'Composition'     },
   { id: 'reference',   label: 'Reference'       },
-  { id: 'live',        label: 'Live demos'      },
 ]
 
 export const EXPORTS: ExportEntry[] = [
@@ -51,10 +49,6 @@ export const EXPORTS: ExportEntry[] = [
   // Reference
   { slug: 'classes', name: 'Re-exported classes', group: 'reference', href: '/reference/classes/', lede: 'PopUpBook, PopUpScene, PopUpElement and friends, re-exported from three-pop-up-book.', badge: 'CLASS' },
   { slug: 'types',   name: 'Types index', group: 'reference', href: '/reference/types/', lede: 'Hook return types and the re-exported option shapes in one place.', badge: 'TYPE' },
-
-  // Live demos
-  { slug: 'editor',  name: 'Interactive editor', group: 'live', href: '/live/editor/', lede: 'The full React studio: declarative book, a Pop-Ups tab, drag-to-place and GLTF loading.', badge: 'FULL-SCREEN' },
-  { slug: 'minimal', name: 'Minimal pop-up', group: 'live', href: '/live/minimal/', lede: 'The smallest hook-based setup — a <Book> with a few shapes that rise as the page settles.', badge: 'FULL-SCREEN' },
 ]
 
 export function groupOf(id: GroupId) {

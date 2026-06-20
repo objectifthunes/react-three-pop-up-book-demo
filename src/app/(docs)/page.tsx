@@ -3,6 +3,7 @@ import { ArrowDownToLine, Code2, PlayCircle, Sparkles } from 'lucide-react'
 import { CodeBlock } from '@/components/CodeBlock'
 import { Eyebrow } from '@/components/Eyebrow'
 import { GROUPS, exportsByGroup, LIB_VERSION, NPM_URL } from '@/components/exports'
+import { LivePopUp } from '@/components/live/examples'
 
 const INSTALL = `pnpm add @objectifthunes/react-three-pop-up-book @objectifthunes/react-three-book \\
   @objectifthunes/three-pop-up-book @objectifthunes/three-book \\
@@ -47,10 +48,14 @@ export default async function HomePage() {
           documented, with working examples.
         </p>
         <div className="landing__hero-actions">
-          <Link className="landing__cta landing__cta--primary" href="/full/editor/">Open the live editor ↗</Link>
-          <Link className="landing__cta" href="/start/quick-start/">Quick start</Link>
+          <Link className="landing__cta landing__cta--primary" href="/start/quick-start/">Quick start ↗</Link>
+          <Link className="landing__cta" href="/hooks/use-pop-up-book/">usePopUpBook</Link>
           <a className="landing__cta" href={NPM_URL} target="_blank" rel="noopener noreferrer">npm</a>
         </div>
+      </section>
+
+      <section className="landing__block">
+        <LivePopUp />
       </section>
 
       <section>
@@ -84,15 +89,14 @@ export default async function HomePage() {
         <div className="landing__skill-header">
           <div>
             <Eyebrow icon={<PlayCircle size={12} strokeWidth={1.75} />}>SEE IT MOVE</Eyebrow>
-            <h2 className="landing__skill-title">Two live demos, no install.</h2>
+            <h2 className="landing__skill-title">Live, all the way down.</h2>
           </div>
-          <Link className="landing__skill-cta" href="/full/editor/">Open editor</Link>
+          <Link className="landing__skill-cta" href="/hooks/use-pop-up-book/">Hooks</Link>
         </div>
         <p style={{ color: 'var(--ot-text-secondary)', fontSize: 14 }}>
-          The <strong>Interactive editor</strong> is the full React studio — the declarative book editor plus a{' '}
-          <strong>Pop-Ups</strong> tab to add, drag, scale and rotate 3D objects (and load a GLTF). The{' '}
-          <strong>Minimal pop-up</strong> shows the bare hook setup: <code>usePopUpBook</code> +{' '}
-          <code>usePopUpScene</code> + <code>PopUpSceneUpdater</code>.
+          Every page on this site embeds the feature it documents as a real, interactive example — shapes rise off
+          the page, span pages, and bounce on the spring. Each runs inline on its own contained React Three Fiber
+          <code> Canvas</code>, composed from the published package — no separate app, no full-screen detour.
         </p>
         <ul className="landing__skill-bullets">
           <li>Three hooks: usePopUpBook / usePopUpScene / usePopUpScenes</li>

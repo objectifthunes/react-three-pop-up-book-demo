@@ -1,10 +1,10 @@
 import { Sparkles } from 'lucide-react'
 import { ExportPage } from '@/components/ExportPage'
-import { FullScreenPreview } from '@/components/Preview'
 import { Source } from '@/components/Source'
 import { Notes } from '@/components/Notes'
 import { PropTable } from '@/components/PropTable'
 import { findExport } from '@/components/exports'
+import { LivePopUp } from '@/components/live/examples'
 
 const e = findExport('/composition/integration/')!
 
@@ -60,6 +60,7 @@ function PopUps({ bookRef }) {
 export default async function Page() {
   return (
     <ExportPage group={e.group} title={e.name} lede={e.lede}>
+      <LivePopUp />
       <Source code={CODE} lang="tsx" />
       <PropTable
         label="THE WIRING, STEP BY STEP"
@@ -97,10 +98,9 @@ export default async function Page() {
           <a href="/start/quick-start/">Quick start</a>. The classes used here —{' '}
           <code>PopUpBook</code>, <code>PopUpScene</code> — are summarised under{' '}
           <a href="/reference/classes/">Re-exported classes</a>, and the full studio is the{' '}
-          <a href="/full/editor/">interactive editor</a>.
+          <a href="/composition/objects/">objects example</a>.
         </p>
       </Notes>
-      <FullScreenPreview href="/full/editor/" illustration={<Sparkles size={40} strokeWidth={1.25} />} />
     </ExportPage>
   )
 }

@@ -3,6 +3,7 @@ import { Source } from '@/components/Source'
 import { Notes } from '@/components/Notes'
 import { PropTable } from '@/components/PropTable'
 import { findExport } from '@/components/exports'
+import { LivePopUpObjects } from '@/components/live/examples'
 
 const e = findExport('/composition/objects/')!
 
@@ -48,6 +49,7 @@ loader.loadAsync(url).then((gltf) => {
 export default async function Page() {
   return (
     <ExportPage group={e.group} title={e.name} lede={e.lede}>
+      <LivePopUpObjects />
       <Source code={PRIMITIVE_CODE} lang="ts" />
       <Source code={GLTF_CODE} lang="ts" />
       <PropTable
