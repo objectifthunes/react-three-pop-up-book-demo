@@ -16,6 +16,9 @@ import {
   AutoTurnDirection,
   PopUpBook,
   PopUpScene,
+  usePopUpBook,
+  usePopUpScene,
+  PopUpSceneUpdater,
   type ThreeBook,
 } from '@objectifthunes/react-three-pop-up-book'
 import { LiveR3FStage } from './LiveR3FStage'
@@ -251,43 +254,127 @@ function makeShape(kind: ShapeKind, color: number): THREE.Object3D {
   return mesh
 }
 
+type PopUpSetup = (scene: PopUpScene) => void
+
+const settingsSingleton = new AutoTurnSettings()
+
 /**
- * Sibling of <Book> (not a child — avoids the content collector). Creates the
- * PopUpBook once the book is built, attaches a scene, auto-opens past the covers
- * and drives the animation loop each frame.
+ * Hook-driven pop-ups. A child of <Book>, so usePopUpBook() reads the book from
+ * context. usePopUpBook returns null until the PopUpBook surfaces (it's created
+ * in the hook's own useFrame once the book builds), so we nudge a re-render until
+ * it's available, then attach a usePopUpScene. The hook drives update() itself —
+ * no PopUpSceneUpdater needed.
  */
-function PopUps({ bookRef, setup }: { bookRef: React.RefObject<ThreeBook | null>; setup: (scene: PopUpScene) => void }) {
+function PopUpsHooks({ setup }: { setup: PopUpSetup }) {
   const { camera, gl } = useThree()
-  const pubRef = useRef<PopUpBook | null>(null)
+  const popUpBook = usePopUpBook()
+  const scene = usePopUpScene({ pageWidth: 2, pageHeight: 3 })
+  const setupRef = useRef(setup); setupRef.current = setup
   const opened = useRef(false)
-  const settings = useMemo(() => new AutoTurnSettings(), [])
-  useFrame((_, dt) => {
-    const book = bookRef.current
-    if (!book || !book.isBuilt) return
-    if (!pubRef.current) {
-      const pub = new PopUpBook({ book })
-      pub.bindInteraction({ camera, domElement: gl.domElement, bookInteraction: { enabled: true } })
-      const scene = new PopUpScene({ pageWidth: 2, pageHeight: 3 })
-      pub.setScene(pub.contentPageOffset, scene)
-      setup(scene)
-      pubRef.current = pub
-    }
-    if (!opened.current && book.isIdle) {
-      book.startAutoTurning(AutoTurnDirection.Next, settings, pubRef.current.frontCoverCount)
+  const [, force] = useState(0)
+
+  // Surface the PopUpBook (null until a re-render after the book builds).
+  useFrame(() => { if (!popUpBook) force((n) => (n + 1) & 1023) })
+
+  useEffect(() => {
+    if (!popUpBook) return
+    popUpBook.bindInteraction({ camera, domElement: gl.domElement, bookInteraction: { enabled: true } })
+    popUpBook.setScene(popUpBook.contentPageOffset, scene)
+    setupRef.current(scene)
+  }, [popUpBook, scene, camera, gl])
+
+  // Auto-open past the covers so the pop-ups rise into view.
+  useFrame(() => {
+    const book = popUpBook?.book
+    if (popUpBook && book && !opened.current && book.isBuilt && book.isIdle) {
+      book.startAutoTurning(AutoTurnDirection.Next, settingsSingleton, popUpBook.frontCoverCount)
       opened.current = true
     }
-    pubRef.current.update(dt)
   })
-  useEffect(() => () => { pubRef.current?.dispose(); pubRef.current = null }, [])
   return null
 }
 
-function PopUpExample({ setup, hint }: { setup: (scene: PopUpScene) => void; hint: string }) {
-  const bookRef = useRef<ThreeBook | null>(null)
+/**
+ * Imperative PopUpBook + <PopUpSceneUpdater> driving the loop — for the
+ * scene-updater page. A sibling of <Book>; reads the book from a ref.
+ */
+function PopUpsUpdater({ bookRef, setup }: { bookRef: React.RefObject<ThreeBook | null>; setup: PopUpSetup }) {
+  const { camera, gl } = useThree()
+  const [pub, setPub] = useState<PopUpBook | null>(null)
+  const setupRef = useRef(setup); setupRef.current = setup
+  const opened = useRef(false)
+  useFrame(() => {
+    const book = bookRef.current
+    if (!book || !book.isBuilt) return
+    if (!pub) {
+      const p = new PopUpBook({ book })
+      p.bindInteraction({ camera, domElement: gl.domElement, bookInteraction: { enabled: true } })
+      const scene = new PopUpScene({ pageWidth: 2, pageHeight: 3 })
+      p.setScene(p.contentPageOffset, scene)
+      setupRef.current(scene)
+      setPub(p)
+    } else if (!opened.current && book.isIdle) {
+      book.startAutoTurning(AutoTurnDirection.Next, settingsSingleton, pub.frontCoverCount)
+      opened.current = true
+    }
+  })
+  useEffect(() => () => { pub?.dispose() }, [pub])
+  return <PopUpSceneUpdater popUpBook={pub} />
+}
+
+function BookCanvas({ children, hint, sibling }: { children: ReactNode; hint: string; sibling?: ReactNode }) {
   const orbit = useRef<{ enabled: boolean } | null>(null)
   const binding = useMemo(() => new StapleBookBinding(), [])
   return (
     <LiveR3FStage tall hint={hint}>
+      <OrbitControls ref={orbit as never} makeDefault enableDamping dampingFactor={0.05} enablePan={false} minDistance={2.5} maxDistance={12} target={[0, 0, 0]} />
+      <Book binding={binding} initialOpenProgress={0} castShadows pagePaperSetup={pagePaperSetup()} coverPaperSetup={coverPaperSetup()}>
+        <BookInteraction orbitControlsRef={orbit} />
+        <Cover color="#1f3a5f" />
+        <Cover color="#1f3a5f" />
+        <Cover color="#1f3a5f" />
+        <Cover color="#1f3a5f" />
+        {pageEls(8)}
+        {children}
+      </Book>
+      {sibling}
+    </LiveR3FStage>
+  )
+}
+
+/** Shapes that rise off the first content page — via usePopUpBook + usePopUpScene. */
+export function LivePopUp() {
+  return (
+    <BookCanvas hint="Shapes rise off the page as it settles — drag the page to fold them away">
+      <PopUpsHooks setup={(scene) => {
+        scene.addPopUp({ object: makeShape('cube', SHAPE_PALETTE[0]), x: 0.5, z: 1.0 })
+        scene.addPopUp({ object: makeShape('cone', SHAPE_PALETTE[1]), x: 1.3, z: 0.7, scale: 1.2 })
+        scene.addPopUp({ object: makeShape('sphere', SHAPE_PALETTE[2]), x: 0.9, z: 2.0 })
+      }} />
+    </BookCanvas>
+  )
+}
+
+/** Any THREE.Object3D works as a pop-up — a mix of primitives. */
+export function LivePopUpObjects() {
+  return (
+    <BookCanvas hint="addPopUp({ object }) accepts any THREE.Object3D — primitives or a loaded GLTF">
+      <PopUpsHooks setup={(scene) => {
+        scene.addPopUp({ object: makeShape('star', SHAPE_PALETTE[3]), x: 0.6, z: 1.0, scale: 1.2 })
+        scene.addPopUp({ object: makeShape('cylinder', SHAPE_PALETTE[4]), x: 1.2, z: 0.7 })
+        scene.addPopUp({ object: makeShape('cube', SHAPE_PALETTE[5]), x: 1.0, z: 1.8, rotation: 0.6 })
+      }} />
+    </BookCanvas>
+  )
+}
+
+/** Pop-ups driven by <PopUpSceneUpdater> with an imperatively-created PopUpBook. */
+export function LiveSceneUpdater() {
+  const bookRef = useRef<ThreeBook | null>(null)
+  const orbit = useRef<{ enabled: boolean } | null>(null)
+  const binding = useMemo(() => new StapleBookBinding(), [])
+  return (
+    <LiveR3FStage tall hint="<PopUpSceneUpdater popUpBook={…} /> drives the per-frame animation loop">
       <OrbitControls ref={orbit as never} makeDefault enableDamping dampingFactor={0.05} enablePan={false} minDistance={2.5} maxDistance={12} target={[0, 0, 0]} />
       <Book ref={bookRef} binding={binding} initialOpenProgress={0} castShadows pagePaperSetup={pagePaperSetup()} coverPaperSetup={coverPaperSetup()}>
         <BookInteraction orbitControlsRef={orbit} />
@@ -297,35 +384,11 @@ function PopUpExample({ setup, hint }: { setup: (scene: PopUpScene) => void; hin
         <Cover color="#1f3a5f" />
         {pageEls(8)}
       </Book>
-      <PopUps bookRef={bookRef} setup={setup} />
+      <PopUpsUpdater bookRef={bookRef} setup={(scene) => {
+        scene.addPopUp({ object: makeShape('cone', SHAPE_PALETTE[1]), x: 0.7, z: 1.0, scale: 1.3 })
+        scene.addPopUp({ object: makeShape('cube', SHAPE_PALETTE[0]), x: 1.4, z: 0.8 })
+        scene.addPopUp({ object: makeShape('sphere', SHAPE_PALETTE[2]), x: 1.0, z: 2.0 })
+      }} />
     </LiveR3FStage>
-  )
-}
-
-/** Shapes that rise off the first content page. */
-export function LivePopUp() {
-  return (
-    <PopUpExample
-      hint="Shapes rise off the page as it settles — drag the page to fold them away"
-      setup={(scene) => {
-        scene.addPopUp({ object: makeShape('cube', SHAPE_PALETTE[0]), x: 0.5, z: 1.0 })
-        scene.addPopUp({ object: makeShape('cone', SHAPE_PALETTE[1]), x: 1.3, z: 0.7, scale: 1.2 })
-        scene.addPopUp({ object: makeShape('sphere', SHAPE_PALETTE[2]), x: 0.9, z: 2.0 })
-      }}
-    />
-  )
-}
-
-/** Any THREE.Object3D works as a pop-up — a mix of primitives. */
-export function LivePopUpObjects() {
-  return (
-    <PopUpExample
-      hint="addPopUp({ object }) accepts any THREE.Object3D — primitives or a loaded GLTF"
-      setup={(scene) => {
-        scene.addPopUp({ object: makeShape('star', SHAPE_PALETTE[3]), x: 0.6, z: 1.0, scale: 1.2 })
-        scene.addPopUp({ object: makeShape('cylinder', SHAPE_PALETTE[4]), x: 1.2, z: 0.7 })
-        scene.addPopUp({ object: makeShape('cube', SHAPE_PALETTE[5]), x: 1.0, z: 1.8, rotation: 0.6 })
-      }}
-    />
   )
 }

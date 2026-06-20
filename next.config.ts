@@ -8,8 +8,9 @@ const nextConfig: NextConfig = {
   basePath: isCI ? "/react-three-pop-up-book-demo" : undefined,
   assetPrefix: isCI ? "/react-three-pop-up-book-demo/" : undefined,
   trailingSlash: true,
-  // The interactive demo is vendored from the library's own Vite demo; it is
-  // type-checked there. Don't fail the docs build on its type quirks.
+  // StrictMode double-invokes effects in dev, which churns the live book's
+  // managed resources (a dev-only artifact). Production is unaffected.
+  reactStrictMode: false,
   typescript: { ignoreBuildErrors: true },
 };
 

@@ -4,7 +4,7 @@ import { Source } from '@/components/Source'
 import { Notes } from '@/components/Notes'
 import { PropTable } from '@/components/PropTable'
 import { findExport } from '@/components/exports'
-import { LivePopUp } from '@/components/live/examples'
+import { LiveSceneUpdater } from '@/components/live/examples'
 
 const e = findExport('/components/scene-updater/')!
 
@@ -33,7 +33,7 @@ function Scene() {
 export default async function Page() {
   return (
     <ExportPage group={e.group} title={e.name} lede={e.lede}>
-      <LivePopUp />
+      <LiveSceneUpdater />
       <Source code={CODE} lang="tsx" />
       <PropTable
         rows={[
