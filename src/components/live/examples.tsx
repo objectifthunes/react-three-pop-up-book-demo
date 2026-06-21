@@ -23,6 +23,7 @@ import {
 } from '@objectifthunes/react-three-pop-up-book'
 import { LiveR3FStage } from './LiveR3FStage'
 import { LiveRow, LiveButton, LiveSlider, LiveToggle, LiveReadout } from './controls'
+import { makeCastle, makeCottage, makeDragon, makePine, makeFlower, makeMushroom, makeHill, makeForest, makeRoundTree, makeSignpost, parchmentDataUrl, coverArtDataUrl, loadImage } from './storybook'
 
 const PAGE_COLOR = '#f5efe0'
 const COVER_COLOR = '#7b3f00'
@@ -227,31 +228,38 @@ export function LiveTextures() {
 }
 
 // ── Pop-up examples ─────────────────────────────────────────────────────────
+//
+// Each pop-up element is a composed THREE.Group (a castle, a dragon, a stand of
+// pines) from the storybook kit. addPopUp reads the group's bounding box and
+// plants its base on the page, so a whole diorama rises as the page settles.
 
-const SHAPE_PALETTE = [0xff5a5f, 0x4cc38a, 0x5b8def, 0xf2c14e, 0xa66cff, 0xff9f43]
-type ShapeKind = 'cube' | 'cone' | 'sphere' | 'cylinder' | 'star'
+const STORYBOOK_COVER = '#5a3b8c'
 
-function makeShape(kind: ShapeKind, color: number): THREE.Object3D {
-  let geo: THREE.BufferGeometry
-  if (kind === 'cube') geo = new THREE.BoxGeometry(0.35, 0.35, 0.35)
-  else if (kind === 'cone') geo = new THREE.ConeGeometry(0.22, 0.5, 24)
-  else if (kind === 'sphere') geo = new THREE.SphereGeometry(0.22, 24, 16)
-  else if (kind === 'cylinder') geo = new THREE.CylinderGeometry(0.18, 0.18, 0.45, 24)
-  else {
-    const shape = new THREE.Shape()
-    for (let i = 0; i < 10; i++) {
-      const r = i % 2 === 0 ? 0.26 : 0.12
-      const a = (i / 10) * Math.PI * 2 - Math.PI / 2
-      const x = Math.cos(a) * r, y = Math.sin(a) * r
-      if (i === 0) shape.moveTo(x, y); else shape.lineTo(x, y)
-    }
-    geo = new THREE.ExtrudeGeometry(shape, { depth: 0.08, bevelEnabled: false })
-    geo.rotateX(-Math.PI / 2)
-  }
-  // Hand the library any object — addPopUp plants it on the page by its base.
-  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color }))
-  mesh.castShadow = true
-  return mesh
+/** Storybook paper: a bound cover + parchment endpapers/pages. Loading these as
+ *  images also suppresses the library's auto "Page N" / cover labels (the label
+ *  is only drawn on a surface that has no image). */
+function useStorybookArt() {
+  const [art, setArt] = useState<{ parchment: HTMLImageElement; cover: HTMLImageElement } | null>(null)
+  useEffect(() => {
+    let alive = true
+    Promise.all([loadImage(parchmentDataUrl()), loadImage(coverArtDataUrl('A Pop-Up Tale', STORYBOOK_COVER))])
+      .then(([parchment, cover]) => { if (alive) setArt({ parchment, cover }) })
+    return () => { alive = false }
+  }, [])
+  return art
+}
+
+type Art = { parchment: HTMLImageElement; cover: HTMLImageElement }
+// Covers: front-outer art, parchment endpaper, parchment endpaper, back-outer art.
+function storyCovers(art: Art) {
+  return [art.cover, art.parchment, art.parchment, art.cover].map((image, i) => (
+    <Cover key={`c${i}`} color={STORYBOOK_COVER} image={image} fitMode="cover" fullBleed />
+  ))
+}
+function storyPages(art: Art, count = 8) {
+  return Array.from({ length: count }).map((_, i) => (
+    <Page key={`p${i}`} color={PAGE_COLOR} image={art.parchment} fitMode="cover" fullBleed />
+  ))
 }
 
 type PopUpSetup = (scene: PopUpScene) => void
@@ -322,47 +330,54 @@ function PopUpsUpdater({ bookRef, setup }: { bookRef: React.RefObject<ThreeBook 
   return <PopUpSceneUpdater popUpBook={pub} />
 }
 
-function BookCanvas({ children, hint, sibling }: { children: ReactNode; hint: string; sibling?: ReactNode }) {
+function BookCanvas({ children, hint }: { children: ReactNode; hint: string }) {
   const orbit = useRef<{ enabled: boolean } | null>(null)
   const binding = useMemo(() => new StapleBookBinding(), [])
+  const art = useStorybookArt()
   return (
     <LiveR3FStage tall hint={hint}>
       <OrbitControls ref={orbit as never} makeDefault enableDamping dampingFactor={0.05} enablePan={false} minDistance={2.5} maxDistance={12} target={[0, 0, 0]} />
-      <Book binding={binding} initialOpenProgress={0} castShadows pagePaperSetup={pagePaperSetup()} coverPaperSetup={coverPaperSetup()}>
-        <BookInteraction orbitControlsRef={orbit} />
-        <Cover color="#1f3a5f" />
-        <Cover color="#1f3a5f" />
-        <Cover color="#1f3a5f" />
-        <Cover color="#1f3a5f" />
-        {pageEls(8)}
-        {children}
-      </Book>
-      {sibling}
+      {art && (
+        <Book binding={binding} initialOpenProgress={0} castShadows pagePaperSetup={pagePaperSetup()} coverPaperSetup={coverPaperSetup()}>
+          <BookInteraction orbitControlsRef={orbit} />
+          {storyCovers(art)}
+          {storyPages(art, 8)}
+          {children}
+        </Book>
+      )}
     </LiveR3FStage>
   )
 }
 
-/** Shapes that rise off the first content page — via usePopUpBook + usePopUpScene. */
+/** A whole kingdom rises off the page — via usePopUpBook + usePopUpScene. */
 export function LivePopUp() {
   return (
-    <BookCanvas hint="Shapes rise off the page as it settles — drag the page to fold them away">
+    <BookCanvas hint="A whole diorama rises as the page settles — drag the page to fold the kingdom away">
       <PopUpsHooks setup={(scene) => {
-        scene.addPopUp({ object: makeShape('cube', SHAPE_PALETTE[0]), x: 0.5, z: 1.0 })
-        scene.addPopUp({ object: makeShape('cone', SHAPE_PALETTE[1]), x: 1.3, z: 0.7, scale: 1.2 })
-        scene.addPopUp({ object: makeShape('sphere', SHAPE_PALETTE[2]), x: 0.9, z: 2.0 })
+        scene.addPopUp({ object: makeHill(0.62), x: 1.0, z: 1.15, scale: 1.1 })
+        scene.addPopUp({ object: makeCastle(), x: 1.0, z: 1.15, scale: 0.92 })
+        scene.addPopUp({ object: makePine(0.95), x: 0.35, z: 0.7 })
+        scene.addPopUp({ object: makePine(0.8), x: 1.66, z: 0.8 })
+        scene.addPopUp({ object: makePine(1.05), x: 0.45, z: 2.0 })
+        scene.addPopUp({ object: makeCottage(), x: 1.55, z: 1.95, scale: 0.9, rotation: -0.5 })
+        scene.addPopUp({ object: makeDragon(), x: 1.45, z: 1.5, scale: 0.7, rotation: -0.9 })
+        scene.addPopUp({ object: makeFlower(), x: 0.8, z: 2.5, scale: 0.9 })
+        scene.addPopUp({ object: makeMushroom(), x: 1.1, z: 2.55 })
       }} />
     </BookCanvas>
   )
 }
 
-/** Any THREE.Object3D works as a pop-up — a mix of primitives. */
+/** Any THREE.Object3D works — here every pop-up is a composed multi-mesh group. */
 export function LivePopUpObjects() {
   return (
-    <BookCanvas hint="addPopUp({ object }) accepts any THREE.Object3D — primitives or a loaded GLTF">
+    <BookCanvas hint="addPopUp({ object }) accepts any THREE.Object3D — a loaded GLTF or, here, composed groups">
       <PopUpsHooks setup={(scene) => {
-        scene.addPopUp({ object: makeShape('star', SHAPE_PALETTE[3]), x: 0.6, z: 1.0, scale: 1.2 })
-        scene.addPopUp({ object: makeShape('cylinder', SHAPE_PALETTE[4]), x: 1.2, z: 0.7 })
-        scene.addPopUp({ object: makeShape('cube', SHAPE_PALETTE[5]), x: 1.0, z: 1.8, rotation: 0.6 })
+        scene.addPopUp({ object: makeForest(), x: 0.6, z: 1.0, scale: 1.0 })
+        scene.addPopUp({ object: makeRoundTree(1.0), x: 1.4, z: 0.8 })
+        scene.addPopUp({ object: makeDragon(), x: 1.2, z: 1.9, scale: 0.8, rotation: 0.5 })
+        scene.addPopUp({ object: makeMushroom(), x: 0.5, z: 2.4 })
+        scene.addPopUp({ object: makeFlower(0xe88bb0), x: 1.6, z: 2.3, scale: 0.9 })
       }} />
     </BookCanvas>
   )
@@ -373,22 +388,23 @@ export function LiveSceneUpdater() {
   const bookRef = useRef<ThreeBook | null>(null)
   const orbit = useRef<{ enabled: boolean } | null>(null)
   const binding = useMemo(() => new StapleBookBinding(), [])
+  const art = useStorybookArt()
   return (
     <LiveR3FStage tall hint="<PopUpSceneUpdater popUpBook={…} /> drives the per-frame animation loop">
       <OrbitControls ref={orbit as never} makeDefault enableDamping dampingFactor={0.05} enablePan={false} minDistance={2.5} maxDistance={12} target={[0, 0, 0]} />
-      <Book ref={bookRef} binding={binding} initialOpenProgress={0} castShadows pagePaperSetup={pagePaperSetup()} coverPaperSetup={coverPaperSetup()}>
-        <BookInteraction orbitControlsRef={orbit} />
-        <Cover color="#1f3a5f" />
-        <Cover color="#1f3a5f" />
-        <Cover color="#1f3a5f" />
-        <Cover color="#1f3a5f" />
-        {pageEls(8)}
-      </Book>
-      <PopUpsUpdater bookRef={bookRef} setup={(scene) => {
-        scene.addPopUp({ object: makeShape('cone', SHAPE_PALETTE[1]), x: 0.7, z: 1.0, scale: 1.3 })
-        scene.addPopUp({ object: makeShape('cube', SHAPE_PALETTE[0]), x: 1.4, z: 0.8 })
-        scene.addPopUp({ object: makeShape('sphere', SHAPE_PALETTE[2]), x: 1.0, z: 2.0 })
-      }} />
+      {art && (
+        <Book ref={bookRef} binding={binding} initialOpenProgress={0} castShadows pagePaperSetup={pagePaperSetup()} coverPaperSetup={coverPaperSetup()}>
+          <BookInteraction orbitControlsRef={orbit} />
+          {storyCovers(art)}
+          {storyPages(art, 8)}
+        </Book>
+      )}
+      {art && <PopUpsUpdater bookRef={bookRef} setup={(scene) => {
+        scene.addPopUp({ object: makeHill(0.5), x: 1.0, z: 1.3, scale: 1.0 })
+        scene.addPopUp({ object: makeCastle(), x: 1.0, z: 1.3, scale: 0.85 })
+        scene.addPopUp({ object: makePine(0.9), x: 0.4, z: 0.8 })
+        scene.addPopUp({ object: makeCottage(), x: 1.5, z: 2.1, scale: 0.85, rotation: -0.4 })
+      }} />}
     </LiveR3FStage>
   )
 }
